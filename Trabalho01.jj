@@ -1,0 +1,236 @@
+//Mauricio 
+options 
+{
+ DEBUG_PARSER=true;
+ //DEBUG_TOKEN_MANAGER=true;
+ static = false; 
+}
+
+PARSER_BEGIN(Trabalho01) 
+package Trabalho01;
+ 
+import java.io.FileInputStream; 
+import java.io.File; 
+import java.io.IOException; 
+public class Trabalho01 {
+ 	public static void main(String args []) throws ParseException {
+	 	try {
+	 		System.out.println("Lendo arquivo fonte...");
+	 		FileInputStream fis = new FileInputStream(new File("..//Trabalho01//src//fonte.txt")); 
+	 		Trabalho01 parser = new Trabalho01(fis); 
+	 		parser.Start();
+	 		System.out.println("Arquivo fonte processado corretamente!");
+		} catch (IOException e) {
+			System.out.println("Falha ao abrir arquivo fonte.");
+	 		System.exit(0);
+	 	}
+	}
+}
+
+PARSER_END(Trabalho01)
+SKIP: { " " | "\t" | "\n" | "\r" }
+
+TOKEN: {
+<COMMENT: "//" (~["\n", "\r"])* ("\n" | "\r" | "\r\n" | "")> //comentários de uma linha
+}
+
+TOKEN: { <EOL: ";" >} // fim de linha
+
+TOKEN: { <INC_DEC: (<MAIS> | <MENOS>)> | <#MAIS: "++"> | <#MENOS: "--"> } // operadores de incremento e decremento
+
+TOKEN: { <#LETTER: ["a"-"z", "A"-"Z"]> | <#DIGIT: (["0"-"9"])+ | (["0"-"9"])+ "." (["0"-"9"])+ >} //letras e dígitos
+
+TOKEN: { <NUMEROS: (["0"-"9"])+ "." (["0"-"9"])+>} //  números com ponto flutuante
+
+TOKEN: {
+<TIPO: (<INT> | <STRING> | <BYTE> | <FLOAT> | <DOUBLE> | <BOOLEAN> | <CHAR>)> | //  tipos primitivos
+<#INT: "int"> |
+<#STRING: "String"> |
+<#BYTE: "byte"> |
+<#FLOAT: "float"> |
+<#DOUBLE: "double"> |
+<#BOOLEAN: "boolean"> |
+<#CHAR: "char">
+}
+
+
+// operadores aritméticos
+TOKEN: { <OPER_ARITMETICO: ("+" | "-" | "*" | "/")> }
+
+// operadores relacionais
+TOKEN: { <OPER_RELACIONAL: (">" | "<" | "==" | "!=")> }
+
+//declarar funções
+TOKEN: { <FUNCTION: "function"> }
+
+// valores booleanos
+TOKEN: { <BOOL: (<TRUE> | <FALSE>)> | <#TRUE: "true"> | <#FALSE: "false"> }
+
+// parênteses
+TOKEN: { <ABRE_PARENTESES: "("> }
+TOKEN: { <FECHA_PARENTESES: ")"> }
+
+// chaves
+TOKEN: { <ABRE_CHAVES: "{" > }
+TOKEN: { <FECHA_CHAVES: "}" > }
+
+// condicao
+TOKEN: { <IF: "if"> }
+TOKEN: { <ELSE: "else"> }
+TOKEN: { <ELSEIF: "elseif"> }
+
+//literais
+TOKEN: { <VALUES: <DIGIT> (<DIGIT>)* | "\""<LETTER> (<LETTER> | <DIGIT> | "_")* "\"" > }
+
+// Atribuição  valor
+TOKEN: { <ATRIBUICAO: "="> }
+
+// argumento
+TOKEN: { <VIRGULA: "," > }
+
+// switch case
+TOKEN: { <SWITCH: "switch"> }
+TOKEN: { <CASE: "case"> }
+TOKEN: { <DOIS_PONTOS: ":" > }
+TOKEN: { <BREAK: "break"> }
+
+// while e do-while
+TOKEN: { <WHILE: "while"> }
+TOKEN: { <DO: "do"> }
+
+// valorescom caracteres
+TOKEN: { <LITERALS: <LETTER> (<LETTER> | <DIGIT> | "_")* > }
+
+
+
+// inicio
+void Start(): {} {
+    COMANDOS() <EOF>
+}
+
+ //tipo da variável seguido pelo nome
+void DECLARAR_VARIAVEL(): {} {
+    <TIPO> <LITERALS>
+}
+
+// (VALUES),(NUMEROS) (LITERALS) (BOOL)
+void ATRIBUICAO_VARIAVEL(): {} {
+    <VALUES> | <NUMEROS> | <LITERALS> | <BOOL>
+}
+
+//linha separada ou por virgula
+void IDENTIFICADOR(): {} {
+    (DECLARAR_VARIAVEL() (<VIRGULA> (<LITERALS> | <VIRGULA> <LITERALS>)+ | <ATRIBUICAO> ATRIBUICAO_VARIAVEL())* <EOL>)
+}
+
+// comandos que podem ser executados no programa
+void COMANDOS(): {} {
+    (
+        WHILE()
+        | EXP_ARITMETICA()
+        | IDENTIFICADOR()
+        | IF()
+        | <COMMENT>
+        | FUNCAO()
+        | DO_WHILE()
+        | SWITCH_CASE()
+        | ESCRITA()
+        
+    )+
+}
+
+// condição que pode ser utilizada
+void CONDICAO(): {} {
+    (
+        <ABRE_PARENTESES>
+        EXP_BOOL()
+        <FECHA_PARENTESES>
+        <ABRE_CHAVES>
+        COMANDOS()
+        <FECHA_CHAVES>
+    )*
+}
+
+// estrutura de condicional
+void IF(): {} {
+    <IF>
+    CONDICAO()
+    (<ELSEIF> CONDICAO())*
+    (<ELSE> <ABRE_CHAVES> COMANDOS() <FECHA_CHAVES>)*
+}
+
+//  estrutura de repetição
+void WHILE(): {} {
+    <WHILE>
+    <ABRE_PARENTESES>
+    EXP_BOOL()
+    <FECHA_PARENTESES>
+    ABRE_ESCOPO()
+}
+
+//  estrutura de declaração
+void FUNCAO(): {} {
+    <FUNCTION>
+    <ABRE_PARENTESES>
+    (PARAMETROS())*
+    <FECHA_PARENTESES>
+    ABRE_ESCOPO()
+}
+
+// estrutura de declaração de parâmetros
+void PARAMETROS(): {} {
+    DECLARAR_VARIAVEL() (<VIRGULA> DECLARAR_VARIAVEL())*
+}
+
+// estrutura de expressões booleanas
+void EXP_BOOL(): {} {
+    (
+        (<VALUES> | <NUMEROS> | <LITERALS>)
+        <OPER_RELACIONAL>
+        (<VALUES> | <NUMEROS> | <LITERALS>)
+    )
+}
+
+// estrutura de expressões aritméticas
+void EXP_ARITMETICA(): {} {
+    (
+        <LITERALS>
+        (<INC_DEC> | <ATRIBUICAO> (<VALUES> | <NUMEROS> | <LITERALS>))
+        (<OPER_ARITMETICO> (<VALUES> | <NUMEROS> | <LITERALS>))*
+        <EOL>
+    )
+}
+
+// abertura de um escopo
+void ABRE_ESCOPO(): {} {
+    <ABRE_CHAVES>
+    COMANDOS()
+    <FECHA_CHAVES>
+}
+
+// estrutura de repetição 
+void DO_WHILE():{ } {
+  < DO >ABRE_ESCOPO()< WHILE ><ABRE_PARENTESES >EXP_BOOL()< FECHA_PARENTESES >
+}
+
+// estrutura de um caso dentro de um switch-case
+void CASE(): {} {
+    <CASE>
+    ((<VALUES> | <LITERALS>) <DOIS_PONTOS> COMANDOS() <BREAK> <EOL>)
+}
+
+//  estrutura de um switch-case
+void SWITCH_CASE(): {} {
+    <SWITCH>
+    <ABRE_PARENTESES>
+    <LITERALS>
+    <FECHA_PARENTESES>
+    <ABRE_CHAVES>
+    (CASE())*
+    <FECHA_CHAVES>
+}
+//comando de escrita
+void ESCRITA(): {} { "ESCRITA " valor() < EOL > }
+void valor(): {} {
+    <VALUES> | <BOOL>
+}
